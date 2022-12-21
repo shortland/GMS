@@ -52,6 +52,7 @@ export const NftHoldersComponent = (nftId) => {
           type="text"
           onChange={(event) => setNftId(event.target.value)}
           placeholder="id"
+          // 0xdcf8ff6b4de163873066118a8eeec9e68c93e284-0-0x0c589fcd20f99a4a1fe031f50079cfc630015184-0x8a1967f5f93da038ad570a5244879031d010b8efa5c95eadcdf7df0f8cfbd25c-10
         ></input>
         <button
           type="button"
