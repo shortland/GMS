@@ -1,25 +1,20 @@
-import logo from './logo.svg';
-import './App.css';
+import "./App.css";
 
-function App() {
+import { UserData, UserDataWrapper } from "./Data/UserData";
+import { NftHoldersData } from "./Data/NftHoldersData";
+import { NftHoldersComponent } from "./Components/NftHoldersComponent";
+
+const App = () => {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <>
+      <br />
+      <div>
+        {UserDataWrapper(UserData(150002))}
+        <hr />
+        {NftHoldersComponent()}
+      </div>
+    </>
   );
-}
+};
 
 export default App;
