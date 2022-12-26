@@ -1,5 +1,5 @@
 import { useState } from "react";
-import React, { Component } from "react";
+import React from "react";
 
 import client from "../ApiClients/TheGraphClient";
 
@@ -23,6 +23,9 @@ export const tradesQuery = `
 
         ... on TradeNFT {
           id
+          block {
+            timestamp
+          }
           accountSeller {
             id
             address
@@ -68,42 +71,161 @@ export const tradesQuery = `
   }
 `;
 
-async function fetchNftTradeHistoryData(nftId) {
-  return (await client.query(tradesQuery.replace("NFT_ID", nftId)).toPromise())[
-    "data"
-  ]["nonFungibleToken"]["transactions"];
-}
+/**
+ * Gets all the transaction history of a particular NFT.
+ * Then filters to get only transactions that were trades (aka sales).
+ */
+const fetchNftTradeHistoryData = async (nftId) => {
+    const history = (
+        await client.query(tradesQuery.replace("NFT_ID", nftId)).toPromise()
+    )["data"]["nonFungibleToken"]["transactions"];
+
+    return history.filter((trade) => {
+        return "__typename" in trade && trade["__typename"] === "TradeNFT";
+    });
+};
+
+/**
+ * Returns a list of timestamps for the past 365 days
+ */
+const getDayTimestamps = (lookback = 365, set = {}) => {
+    if (lookback === -1) {
+        return set;
+    }
+
+    const today = new Date();
+    const priorDate = new Date(new Date().setDate(today.getDate() - lookback));
+    priorDate.setHours(0);
+    priorDate.setMinutes(0);
+    priorDate.setSeconds(0);
+
+    set[priorDate] = {
+        date: priorDate,
+        trades: [],
+    };
+
+    return getDayTimestamps(lookback - 1, set);
+};
+
+/**
+ * Returns a object, with keys being date objects of the last 365 days.
+ * Value of key is object {date: `key, again here`, trades: [`trade object from subgraph`]}
+ */
+const getDailyTradeHistory = (trades) => {
+    const timestamps = getDayTimestamps();
+
+    trades.forEach((trade) => {
+        const tradeDate = new Date(
+            1000 * parseInt(trade["block"]["timestamp"])
+        );
+
+        // candleday is the trade date, but set hour/min/sec to 0
+        const candleDay = structuredClone(tradeDate);
+        candleDay.setHours(0);
+        candleDay.setMinutes(0);
+        candleDay.setSeconds(0);
+
+        timestamps[candleDay]["trades"].push(trade);
+    });
+
+    return timestamps;
+};
+
+/**
+ * Convert the messy, but easily accessible object from `getDailyTradeHistory` into a neat, ordered list of objects to feed our chart.
+ * e.g. object: {date: `day's date`, ohlc: [12,15,12,15], v: 3}
+ */
+const getOrderedOhlcVCandles = (trades) => {
+    const ohlcv = [];
+
+    const dailyTradeHistory = getDailyTradeHistory(trades);
+    // TODO: order the objects in the list
+
+    for (const [key, value] of Object.entries(dailyTradeHistory)) {
+        let open = -1;
+        let openTime = 0;
+
+        let high = -1;
+        let low = -1;
+
+        let close = -1;
+        let closeTime = 0;
+
+        // calculating open & close will be a bit different, since we need to compare trade["block"]["timestamp"] with one another
+        value["trades"].forEach((trade) => {
+            if (trade["realizedNFTPrice"] > high) {
+                high = trade["realizedNFTPrice"];
+            }
+            if (trade["realizedNFTPrice"] < low || low === -1) {
+                low = trade["realizedNFTPrice"];
+            }
+
+            if (openTime === 0) {
+                openTime = trade["block"]["timestamp"];
+                open = trade["realizedNFTPrice"];
+            }
+            if (closeTime === 0) {
+                closeTime = trade["block"]["timestamp"];
+                close = trade["realizedNFTPrice"];
+            }
+            if (trade["block"]["timestamp"] < closeTime) {
+                closeTime = trade["block"]["timestamp"];
+                close = trade["realizedNFTPrice"];
+            }
+            if (trade["block"]["timestamp"] > openTime) {
+                openTime = trade["block"]["timestamp"];
+                open = trade["realizedNFTPrice"];
+            }
+        });
+
+        ohlcv.push({
+            date: value["date"],
+            ohlc: [open, high, low, close],
+            vol: value["trades"].length,
+        });
+    }
+
+    return ohlcv;
+};
 
 export const NftTradesComponent = () => {
-  const [getNftId, setNftId] = useState("");
-  const [getNftTradesData, setNftTradesData] = useState("");
+    const [getNftId, setNftId] = useState("");
+    const [getNftTradesData, setNftTradesData] = useState("");
 
-  return (
-    <>
-      <div>
-        <input
-          type="text"
-          onChange={(event) => setNftId(event.target.value)}
-          placeholder="id"
-          // 0xdcf8ff6b4de163873066118a8eeec9e68c93e284-0-0x0c589fcd20f99a4a1fe031f50079cfc630015184-0x8a1967f5f93da038ad570a5244879031d010b8efa5c95eadcdf7df0f8cfbd25c-10
-        ></input>
-        <button
-          type="button"
-          onClick={async () => {
-            const d = await fetchNftTradeHistoryData(getNftId);
-            console.log(d);
-            setNftTradesData(d);
-          }}
-        >
-          Get Trade History
-        </button>
+    return (
+        <>
+            <div>
+                <input
+                    type="text"
+                    onChange={(event) => setNftId(event.target.value)}
+                    placeholder="id"
+                    // 0xdcf8ff6b4de163873066118a8eeec9e68c93e284-0-0x0c589fcd20f99a4a1fe031f50079cfc630015184-0x8a1967f5f93da038ad570a5244879031d010b8efa5c95eadcdf7df0f8cfbd25c-10
+                ></input>
+                <button
+                    type="button"
+                    onClick={async () => {
+                        // So, we have a bunch of raw data now, but we want OHLC with a timestamp of the day
+                        // let's pass this data to a helper,
+                        // first generate timestamp of first second of the day, and then group the raw data blocks into hashmap lists from that.
+                        const trades = await fetchNftTradeHistoryData(getNftId);
 
-        <br />
+                        // Get OHLCV of past N days of data
+                        const orderedOhlcvCandles =
+                            getOrderedOhlcVCandles(trades);
+                        console.log(orderedOhlcvCandles);
 
-        {getNftTradesData && getNftTradesData.length > 0 && (
-          <pre>{JSON.stringify(getNftTradesData, null, 4)}</pre>
-        )}
-      </div>
-    </>
-  );
+                        setNftTradesData(trades);
+                    }}
+                >
+                    Get Trade History
+                </button>
+
+                <br />
+
+                {getNftTradesData && getNftTradesData.length > 0 && (
+                    <pre>{JSON.stringify(getNftTradesData, null, 4)}</pre>
+                )}
+            </div>
+        </>
+    );
 };
