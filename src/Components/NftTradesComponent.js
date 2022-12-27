@@ -1,5 +1,6 @@
 import { useState } from "react";
 import React from "react";
+import ApexCharts from "apexcharts";
 
 import client from "../ApiClients/TheGraphClient";
 
@@ -136,10 +137,14 @@ const getDailyTradeHistory = (trades) => {
  * e.g. object: {date: `day's date`, ohlc: [12,15,12,15], v: 3}
  */
 const getOrderedOhlcVCandles = (trades) => {
+    const dustFactor = 1000000000000000000.0;
+
     const ohlcv = [];
 
     const dailyTradeHistory = getDailyTradeHistory(trades);
     // TODO: order the objects in the list
+
+    let gotInitialStart = false;
 
     for (const [key, value] of Object.entries(dailyTradeHistory)) {
         let open = -1;
@@ -178,10 +183,44 @@ const getOrderedOhlcVCandles = (trades) => {
             }
         });
 
+        // ohlcv.push({
+        //     date: value["date"],
+        //     ohlc: [open, high, low, close],
+        //     vol: ,
+        // });
+
+        if (!gotInitialStart && value["trades"].length > 0) {
+            gotInitialStart = true;
+        }
+
+        if (!gotInitialStart) {
+            continue;
+        }
+
+        // TODO: a better way of removing noise
+        // remove bad values
+        if (open > dustFactor) {
+            open = -1;
+        }
+        if (high > dustFactor) {
+            high = -1;
+        }
+        if (low > dustFactor) {
+            low = -1;
+        }
+        if (close > dustFactor) {
+            close = -1;
+        }
+
         ohlcv.push({
-            date: value["date"],
-            ohlc: [open, high, low, close],
-            vol: value["trades"].length,
+            x: value["date"],
+            y: [
+                open / dustFactor,
+                high / dustFactor,
+                low / dustFactor,
+                close / dustFactor,
+            ],
+            // vol: value["trades"].length,
         });
     }
 
@@ -214,6 +253,34 @@ export const NftTradesComponent = () => {
                             getOrderedOhlcVCandles(trades);
                         console.log(orderedOhlcvCandles);
 
+                        // start hack
+
+                        var options = {
+                            chart: {
+                                type: "candlestick",
+                            },
+                            series: [
+                                {
+                                    data: orderedOhlcvCandles,
+                                },
+                            ],
+                        };
+
+                        const chart = new ApexCharts(
+                            document.querySelector("#chart"),
+                            options
+                        );
+
+                        // hack to get around multiple renders, this isn't React
+                        const chartChildren = document.querySelector("#chart");
+                        while (chartChildren.firstChild) {
+                            chartChildren.removeChild(chartChildren.firstChild);
+                        }
+
+                        chart.render();
+
+                        // end hack
+
                         setNftTradesData(trades);
                     }}
                 >
@@ -222,9 +289,34 @@ export const NftTradesComponent = () => {
 
                 <br />
 
-                {getNftTradesData && getNftTradesData.length > 0 && (
+                {/* {getNftTradesData && getNftTradesData.length > 0 && (
                     <pre>{JSON.stringify(getNftTradesData, null, 4)}</pre>
-                )}
+                )} */}
+
+                {/* {getNftTradesData && getNftTradesData.length > 0 && (
+                    <ReactApexChart
+                        options={{
+                            chart: {
+                                type: "bar",
+                            },
+                            series: [
+                                {
+                                    name: "sales",
+                                    data: [30, 40, 35, 50, 49, 60, 70, 91, 125],
+                                },
+                            ],
+                            xaxis: {
+                                categories: [
+                                    1991, 1992, 1993, 1994, 1995, 1996, 1997,
+                                    1998, 1999,
+                                ],
+                            },
+                        }}
+                        // series={this.state.series}
+                        type="candlestick"
+                        height={350}
+                    />
+                )} */}
             </div>
         </>
     );
