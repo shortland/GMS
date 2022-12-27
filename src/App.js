@@ -1,8 +1,8 @@
 import "./App.css";
 
 import { UserData, UserDataWrapper } from "./Data/UserData";
-import { NftHoldersComponent } from "./Components/NftHoldersComponent";
-import { NftTradesComponent } from "./Components/NftTradesComponent";
+import { NftHolders } from "./Components/NftHolders";
+import { NftTrades } from "./Components/NftTrades";
 
 const App = () => {
     return (
@@ -11,9 +11,9 @@ const App = () => {
             <div>
                 {UserDataWrapper(UserData(150002))}
                 <hr />
-                {NftHoldersComponent()}
+                <NftHolders />
                 <hr />
-                <NftTradesComponent />
+                <NftTrades />
             </div>
         </>
     );

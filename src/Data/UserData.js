@@ -29,40 +29,40 @@ const userDataQuery = `
     }
 `;
 
-async function fetchUserData(accountId) {
-  return client
-    .query(userDataQuery.replace("ACCOUNT_ID", accountId))
-    .toPromise();
-}
+const fetchUserData = async (accountId) => {
+    return client
+        .query(userDataQuery.replace("ACCOUNT_ID", accountId))
+        .toPromise();
+};
 
 export const UserDataWrapper = (userData) => {
-  const [isVis, setIsVis] = useState(false);
+    const [isVis, setIsVis] = useState(false);
 
-  const toggleVis = (event) => {
-    setIsVis((current) => !current);
-  };
+    const toggleVis = (event) => {
+        setIsVis((current) => !current);
+    };
 
-  return (
-    <>
-      <div>
-        <button onClick={toggleVis}>Toggle User Data</button>
+    return (
+        <>
+            <div>
+                <button onClick={toggleVis}>Toggle User Data</button>
 
-        {isVis && "data" in userData && (
-          <pre>{JSON.stringify(userData.data, null, 4)}</pre>
-        )}
-      </div>
-    </>
-  );
+                {isVis && "data" in userData && (
+                    <pre>{JSON.stringify(userData.data, null, 4)}</pre>
+                )}
+            </div>
+        </>
+    );
 };
 
 export const UserData = (accountId) => {
-  const [userData, setUserData] = useState([]);
+    const [userData, setUserData] = useState([]);
 
-  useEffect(() => {
-    fetchUserData(accountId).then((userData) => setUserData(userData));
-  }, [accountId]);
+    useEffect(() => {
+        fetchUserData(accountId).then((userData) => setUserData(userData));
+    }, [accountId]);
 
-  return userData;
+    return userData;
 };
 
 // export default UserData;

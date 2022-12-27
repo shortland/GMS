@@ -213,7 +213,7 @@ const getOrderedOhlcVCandles = (trades) => {
         }
 
         ohlcv.push({
-            x: value["date"],
+            x: value["date"].toDateString(),
             y: [
                 open / dustFactor,
                 high / dustFactor,
@@ -227,9 +227,8 @@ const getOrderedOhlcVCandles = (trades) => {
     return ohlcv;
 };
 
-export const NftTradesComponent = () => {
+export const NftTrades = () => {
     const [getNftId, setNftId] = useState("");
-    const [getNftTradesData, setNftTradesData] = useState("");
 
     return (
         <>
@@ -280,43 +279,10 @@ export const NftTradesComponent = () => {
                         chart.render();
 
                         // end hack
-
-                        setNftTradesData(trades);
                     }}
                 >
                     Get Trade History
                 </button>
-
-                <br />
-
-                {/* {getNftTradesData && getNftTradesData.length > 0 && (
-                    <pre>{JSON.stringify(getNftTradesData, null, 4)}</pre>
-                )} */}
-
-                {/* {getNftTradesData && getNftTradesData.length > 0 && (
-                    <ReactApexChart
-                        options={{
-                            chart: {
-                                type: "bar",
-                            },
-                            series: [
-                                {
-                                    name: "sales",
-                                    data: [30, 40, 35, 50, 49, 60, 70, 91, 125],
-                                },
-                            ],
-                            xaxis: {
-                                categories: [
-                                    1991, 1992, 1993, 1994, 1995, 1996, 1997,
-                                    1998, 1999,
-                                ],
-                            },
-                        }}
-                        // series={this.state.series}
-                        type="candlestick"
-                        height={350}
-                    />
-                )} */}
             </div>
         </>
     );
